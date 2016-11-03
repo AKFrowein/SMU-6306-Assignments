@@ -1,0 +1,139 @@
+---
+title: "Case Study 01"
+author: "Anna Frowein"
+date: "November 3, 2016"
+output: html_document
+keep_md: true
+---
+##Introduction
+
+  We reviewed the provided Gross Domestic Product data provided to compare Income Groupings from the educational data set to GDP ranking and GDP dollars in the GDP data set.  In order to fully understand the data we cleaned the data sets, merge them together, and created our own data points for analysis.  
+  This document will provide the steps in which these actives were performed and their results.
+  We will also be answering the following questions:
+    
+    -How many Countries matched between the two data sets?
+    
+    -When the merged data is sorted, which country was 13th in the sorted data?
+    
+    -Provide a Plot of GDP for each country, color coded by Income Group.
+    
+    -How many Lower middle income countries are actually among the best nations when comparing GDP?
+    
+##R Setup
+
+  The program used in the clean up and analysis of the data was R.  The following code provides the setup required for the R Session, including setting working directory (please be sure to change to your working directory) and the required libraries to be loaded.  
+```{r setup}
+#First code line is commented out and is for installing the required packages if they are not already installed.  If this code is need uncomment this segment
+#install.packages(c("repmis","RCurl","ggplot2","gtools","brew","data.table","datasets","dplyr","stats")
+library(repmis)
+library(RCurl)
+library(brew)
+library(data.table)
+library(dplyr)
+library(stats)
+library(datasets)
+library(ggplot2)
+library(gtools)
+#Set the working directory and check it to make sure it is right.
+getwd() #This is check to see where the "default" working directory is set
+#In the next segment be sure to set for your Working directory path
+setwd("C:/Users/anna_frowein/Documents/SMU/Doing Data Science/CaseStudy1")
+getwd() #this is to double check that the directory is properly set
+```
+
+## Downloading and Cleaning the Data Sets
+###Downloading the Data Sets
+  We were provided with two data sets from the internet.  The follow R code provides the means to download the data from the websites they are on to your local computer.  The list.files function is included in order to double check that the files are present in your working directory.  The R code also provides the required code to read the raw data into R and some functions to provide reviews of the data at this point.
+  
+```{r}
+#Downloand the raw data sets into the working directory from the websites and check to see that they are in the working directory
+siteGDP<-"https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv"
+siteEDU<-"https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FEDSTATS_Country.csv"
+download.file(siteGDP,destfile="./GDP_Raw.csv")
+download.file(siteEDU,destfile="./Education_Raw.csv")
+list.files()
+#Load data files into R and review their headers and data
+GDP_Raw<-read.csv("./GDP_Raw.csv",header=TRUE)
+Education_Raw<-read.csv("./Education_Raw.csv",header=TRUE)
+head(GDP_Raw)
+head(Education_Raw)
+summary(GDP_Raw)
+View(Education_Raw)
+View(GDP_Raw)
+```
+
+###Cleaning the Data
+  In order to maintain the original data sets, it was decided that new files would be created for the data manipulation and clean up.  This ensured that if an error is made the raw data is still intact without having to download it again.
+  In the data clean up process unnecessary columns and rows were removed from the data sets.  In the GDP data set we cleaned the GDP$ so that no punctuation was included in the data.  Column headers were renamed in both files in order for the planned merge to work.  The following R code creates the new files and performs the data clean up.  Here again is code included to review the data once this is all completed.
+
+```{r}
+#Cleaning the data files
+#copying files for manipulation to ensure raw data stays entact
+file.copy("./Education_Raw.csv","./Education_Clean.csv")
+file.copy("./GDP_Raw.csv","./GDP_Clean.csv")
+#Create Clean Data files removing unwated columns and rows as well as applying common headers for merging
+GDP_Clean<-read.csv("./GDP_Clean.csv",header=TRUE)
+GDP_Clean<-GDP_Clean[-c(1:4,195,220,222,236:330),-c(3,6:10)]
+setnames(GDP_Clean,1,"shortcode")
+setnames(GDP_Clean,2,"GDPRanking")
+setnames(GDP_Clean,3,"Economy")
+setnames(GDP_Clean,4, "GDPinUSMill")
+GDP_Clean$GDPinUSMill <- as.numeric(gsub("[^[:digit:]]",0, GDP_Clean$GDPinUSMill))
+GDP_Clean$GDPRanking <- as.numeric(gsub("[^[:digit:]]",0, GDP_Clean$GDPRanking))
+Education_Clean<-read.csv("./Education_Clean.csv",header=TRUE)
+Education_Clean<-Education_Clean[,-c(4:31)]
+setnames(Education_Clean,"CountryCode","shortcode")
+View(Education_Clean)
+View(GDP_Clean)
+```
+
+##Creation of Merged Data Set
+  Once the data clean up was done the data sets were merged into a new data set. At this point we are able to see that there are 224 matches based on the Short Country code between the two data sets being reviewed.
+
+```{r}
+#merge data sets by the shortcode columns
+MergeGDP<-merge(Education_Clean,GDP_Clean,by="shortcode")
+#How many matches are in the dataset, a row count answer this as the merge function omits non matched countries.
+nrow(MergeGDP)
+```
+
+##Sort Merged Data by GDP Ranking
+  Next the merged data set was sorted into a new data set by the the GDP ranking, in order to obtain the desired result of the United States being last in this data set, a descending sort was performed.  The following R code provides the required coding to sort the data and to find which Country is now listed 13th within the data.  The country is Isle of Man.  There is also code to view the overall data set sorted.
+  
+```{r}
+#sort by GDP with USA being at the end, and give the Country listed 13th.
+SortedMergeGDP<-MergeGDP[order(MergeGDP$GDPRanking,na.last = FALSE,decreasing = TRUE),]
+View(SortedMergeGDP)
+SortedMergeGDP[13,"Long.Name"]
+```
+
+##Average GDP Rankings
+  Next the average GDP Rankings per Income Group were determined.  It was found that the High income: OECD group had an average ranking of 32.9667 and High income: nonOECD group had an average ranking of 91.1304, as seen in the table created in the following R code.
+
+```{r}
+aggregate(MergeGDP$GDPRanking, list(MergeGDP$Income.Group), mean, trim=0, na.rm=TRUE)
+```
+
+##Plot of GDP
+  Next we plotted the GDP Dollars for each of the countries, with color coding based on Income Group.
+
+```{r}
+PlotGDP<-ggplot(MergeGDP,aes(shortcode,GDPinUSMill))
+PlotGDP+geom_point(aes(color=factor(Income.Group)))
+```
+
+##Quantile Groups by GDP Ranking
+  The last analysis performed was a quantile analysis, in which five(5) separate quantiles were created based on the GDP Ranking of the countries.  This was added to the Merged Data set and a new data set was created.  The following R code will provide the required code to create and review the quantiles created.  We also found that 5 countries in the Lower middle income group are apart of the top ranking countries.
+
+```{r}
+Quant<-MergeGDP[quantcut(MergeGDP$GDPRanking,q=5,na.rm=TRUE),]
+QuantMergeGDP<-mutate(MergeGDP,Quantile=quantcut(MergeGDP$GDPRanking,q=5,na.rm=TRUE))
+View(QuantMergeGDP)
+QITable<-table(QuantMergeGDP$Quantile,QuantMergeGDP$Income.Group)
+QITable
+QITable["[1,38.6]","Lower middle income"]
+```
+
+##Conclusion
+  Based on the analysis performed, what really stuck out was that Countries that participated in the Organisation for Economic Co-operation and Development (OECD) generally had a higher ranking than other countries and were all apart of a "High income" group. This is an observational study so no causality can truly be placed on effect of Ranking that being OECD has, however, based on this data if some under-developed countries could participate in the OECD then the over GDP could increase.
+
