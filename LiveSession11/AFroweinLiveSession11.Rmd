@@ -1,0 +1,76 @@
+---
+title: "Live Session 11"
+author: "Anna Frowein"
+date: "November 19, 2016"
+output: html_document
+keep_md: True
+---
+#Set up file
+Download required library and the data set
+```{r setup, collapse=TRUE}
+#install.packages('fpp')
+library(fpp)
+data(ukcars)
+```
+
+##Question a
+Plot the time series. Try to identify seasonal fluctuations and/or a trend.
+```{r QA}
+plot(ukcars)
+```
+
+###Summary of finding.
+In the initial plot it appears that there is seasonality to the the UK Cars data based on QTR.  It is also notable that there is a trend of all growth from the early 1980's to 2005.
+
+##Question B	
+Use a classical decomposition to calculate the trend-cycle and seasonal indices.
+```{r QB}
+fitd <- decompose(ukcars) 
+plot(fitd)
+```
+
+##Question C
+Do the results support the graphical interpretation from findings made prior?
+The graphical results from Question B does support the initial observations made in Question A on the seasonality and growth trend.
+
+##Question D
+Compute and plot the seasonally adjusted data. 
+```{r QD}
+eeadj <- seasadj(fitd)
+plot(eeadj)
+```
+
+##Question E
+Change one observation to be an outlier (e.g., add 500 to one observation), and recompute the seasonally adjusted data. What is the effect of the outlier? 
+```{r QE}
+ukcars2 <-ts(c(ukcars[1:54],ukcars[55]+500,ukcars[56:121] ),start=c(1977,1),frequency=12) 
+plot(ukcars2)
+eeadj2<-seasadj(decompose(ukcars2))
+plot(eeadj2)
+```
+
+###Summary of findings
+The outlier does change the data however due to the outlier being in the middle of the data it is expected that its influence on the fit will be some what minimal and simple pull the fit line a little higher over all.
+
+##Question F
+Does it make any difference if the outlier is near the end rather than in the middle of the time series? 
+```{r QF}
+ukcars3 <-ts(c(ukcars[1:119],ukcars[120]+500,ukcars[121] ),start=c(1977,1),frequency=12) 
+plot(ukcars3)
+eeadj3<-seasadj(decompose(ukcars3))
+plot(eeadj3)
+```
+
+###Summary of findings
+In the case of changing the data towards the end of series there seems to be less of an effect, perhaps due to the growth trend noted already.  However, what I was expecting to see was a larger impact on the data which would cause the fit line to have a more sever slope if we assume a linear relationship in the data starting in the early 1980's.
+
+##Question G
+Use STL to decompose the series
+```{r QG}
+fit <- stl(ukcars, s.window=5) 
+plot(fit)
+plot(ukcars, col="gray",
+     main="UK Cars",
+     ylab="Car", xlab="")
+lines(fit$time.series[,2],col="red",ylab="Trend")
+```
